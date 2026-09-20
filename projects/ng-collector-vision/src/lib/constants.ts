@@ -15,6 +15,19 @@ import type { CardScannerGame } from './types';
 export const GAME_OPTIONS: { value: CardScannerGame; label: string }[] = [
   { value: 'magic', label: 'Magic' },
   { value: 'pokemon', label: 'Pokémon' },
+  { value: 'pokemon-japan', label: 'Pokémon (Japan)' },
+  { value: 'yugioh', label: 'Yu-Gi-Oh!' },
   { value: 'lorcana', label: 'Lorcana' },
   { value: 'onepiece', label: 'One Piece' },
+  { value: 'fab', label: 'Flesh and Blood' },
+  { value: 'digimon', label: 'Digimon' },
+  { value: 'swu', label: 'Star Wars: Unlimited' },
+  { value: 'union-arena', label: 'Union Arena' },
+  { value: 'gundam', label: 'Gundam' },
+  { value: 'riftbound', label: 'Riftbound' },
 ];
+
+/** Games whose id differs from the Catalog v2 game alias. Everything else passes through. */
+export const CATALOG_GAME_ALIASES: Partial<Record<CardScannerGame, string>> = {
+  magic: 'mtg',
+};

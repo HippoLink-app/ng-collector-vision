@@ -1,5 +1,23 @@
 /** TCG game families supported by CollectorVision. */
-export type CardScannerGame = 'magic' | 'pokemon' | 'lorcana' | 'onepiece';
+export type CardScannerGame =
+  | 'magic'
+  | 'pokemon'
+  | 'pokemon-japan'
+  | 'yugioh'
+  | 'lorcana'
+  | 'onepiece'
+  | 'fab'
+  | 'digimon'
+  | 'swu'
+  | 'union-arena'
+  | 'gundam'
+  | 'riftbound';
+
+/**
+ * Catalog v2 source. `tcgplayer` ids are TCGplayer product ids. `scryfall` (Magic only)
+ * ids are Scryfall card UUIDs and carry an oracle id for grouping printings.
+ */
+export type CardScannerSource = 'tcgplayer' | 'scryfall';
 
 // ── Worker message types ────────────────────────────────────────────────────
 // These mirror the actual messages emitted by scanner.worker.mjs.
@@ -21,6 +39,8 @@ export interface WorkerReadyMsg {
   catalogRows: number;
   catalogTotalRows: number;
   catalogLimit: number | null;
+  catalogVersion: number | null;
+  catalogKey: string | null;
 }
 
 export interface WorkerResultMsg {
@@ -32,6 +52,7 @@ export interface WorkerResultMsg {
   confidence: number;
   sharpness?: number | null;
   cardId?: string | null;
+  cardName?: string | null;
   secondaryId?: string | null;
   secondaryIdField?: string | null;
   score?: number | null;
@@ -59,11 +80,13 @@ export type ConfirmedResult = WorkerResultMsg & { cardId: string; score: number 
  * TCGplayer, or their own catalog API to resolve a name, image, or price.
  */
 export interface CardDetection {
-  /** Raw card identifier from the CollectorVision catalog (e.g. Scryfall UUID). */
+  /** Raw card identifier from the catalog: TCGplayer product id or Scryfall UUID, per `source`. */
   cardId: string;
-  /** Oracle ID or other secondary identifier, if the catalog includes one. */
+  /** Card name from the catalog record, if present. */
+  cardName: string | null;
+  /** Oracle ID (Scryfall catalogs only). `null` for TCGplayer catalogs. */
   secondaryId: string | null;
-  /** Name of the `secondaryId` field (e.g. `"oracleId"`). */
+  /** Name of the `secondaryId` field (e.g. `"scryfallOracleId"`). */
   secondaryIdField: string | null;
   /** Cosine similarity score, range [0, 1]. */
   score: number;

@@ -8,6 +8,7 @@ export { CardScannerComponent } from './lib/card-scanner/card-scanner';
 // Types
 export type {
   CardScannerGame,
+  CardScannerSource,
   CardDetection,
   ScannerStatus,
   WorkerMsg,
