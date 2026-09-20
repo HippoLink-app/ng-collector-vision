@@ -60,6 +60,11 @@
                 "output": "/collectorvision/vendor"
               },
               {
+                "glob": "**/*",
+                "input": "dist/ng-collector-vision/collectorvision/lib",
+                "output": "/collectorvision/lib"
+              },
+              {
                 "glob": "coi-serviceworker.js",
                 "input": "dist/ng-collector-vision/collectorvision",
                 "output": "/"

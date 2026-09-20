@@ -10,6 +10,7 @@ import {
   SCAN_INTERVAL_MS,
   type CardDetection,
   type CardScannerGame,
+  type CardScannerSource,
 } from 'ng-collector-vision';
 
 import { ScryfallService } from './scryfall.service';
@@ -43,6 +44,10 @@ export class App {
 
   protected readonly gameOptions = GAME_OPTIONS;
   protected readonly selectedGame = signal<CardScannerGame>('magic');
+  // Magic uses the Scryfall catalog so the demo can enrich hits from Scryfall by id.
+  protected readonly source = computed<CardScannerSource>(() =>
+    this.selectedGame() === 'magic' ? 'scryfall' : 'tcgplayer',
+  );
 
   // ── Scanner settings ──────────────────────────────────────────────────────
 
@@ -81,14 +86,16 @@ export class App {
     const placeholder: EnrichedCard = {
       detection,
       quantity: 1,
-      name: detection.cardId,
+      name: detection.cardName ?? detection.cardId,
       setName: '',
       setCode: '',
       thumbnailUrl: null,
-      loading: true,
+      loading: this.source() === 'scryfall',
     };
     this.cards.update((list) => [placeholder, ...list]);
     this.#triggerFlash(detection.cardId);
+
+    if (this.source() !== 'scryfall') return;
 
     this.#scryfall
       .lookup(detection.cardId)
@@ -100,7 +107,7 @@ export class App {
               ? {
                   ...c,
                   loading: false,
-                  name: sf.name || detection.cardId,
+                  name: sf.name || detection.cardName || detection.cardId,
                   setName: sf.set_name || '',
                   setCode: sf.set?.toUpperCase() || '',
                   thumbnailUrl: ScryfallService.thumbnail(sf),
