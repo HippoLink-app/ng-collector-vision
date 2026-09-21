@@ -631,7 +631,7 @@ async function ortWasmThreaded(moduleArg = {}) {
     he = [],
     Mf = {};
   function Pf() {
-    for (var a = g.numThreads - 1; a--; ) Jf();
+    for (var a = g.numThreads - 1; a--;) Jf();
     Ff.push(async () => {
       var b = Qf();
       Gf++;
@@ -809,7 +809,7 @@ async function ortWasmThreaded(moduleArg = {}) {
     bg = (a, b, c, d) => {
       c = b + c;
       if (d) return c;
-      for (; a[b] && !(b >= c); ) ++b;
+      for (; a[b] && !(b >= c);) ++b;
       return b;
     },
     cg = (a, b = 0, c, d) => {
@@ -817,7 +817,7 @@ async function ortWasmThreaded(moduleArg = {}) {
       c = bg(a, b, c, d);
       if (16 < c - b && a.buffer && ag)
         return ag.decode(a.buffer instanceof ArrayBuffer ? a.subarray(b, c) : a.slice(b, c));
-      for (d = ''; b < c; ) {
+      for (d = ''; b < c;) {
         var e = a[b++];
         if (e & 128) {
           var f = a[b++] & 63;
@@ -879,7 +879,7 @@ async function ortWasmThreaded(moduleArg = {}) {
   var wb = () => H(''),
     P = (a) => {
       a >>>= 0;
-      for (var b = ''; ; ) {
+      for (var b = ''; ;) {
         var c = (u(), x)[a++ >>> 0];
         if (!c) return b;
         b += String.fromCharCode(c);
@@ -1277,7 +1277,7 @@ async function ortWasmThreaded(moduleArg = {}) {
     e >>>= 0;
     xg.length = 0;
     c = e >>> 3;
-    for (d = (e + d) >>> 3; c < d; ) {
+    for (d = (e + d) >>> 3; c < d;) {
       var f;
       (u(), F)[c++ >>> 0] ? (f = (u(), F)[c++ >>> 0]) : (f = (u(), E)[c++ >>> 0]);
       xg.push(f);
@@ -1517,7 +1517,7 @@ async function ortWasmThreaded(moduleArg = {}) {
   }
   function bc(a) {
     a >>>= 0;
-    for (var b = R(a); b.length; ) {
+    for (var b = R(a); b.length;) {
       var c = b.pop();
       b.pop()(c);
     }
@@ -1652,7 +1652,7 @@ async function ortWasmThreaded(moduleArg = {}) {
   var Zg = [],
     $g = (a, b) => {
       Zg.length = 0;
-      for (var c; (c = (u(), x)[a++ >>> 0]); ) {
+      for (var c; (c = (u(), x)[a++ >>> 0]);) {
         var d = 105 != c;
         d &= 112 != c;
         b += d && b % 8 ? 4 : 0;
@@ -1761,7 +1761,7 @@ async function ortWasmThreaded(moduleArg = {}) {
     b >>>= 0;
     if (ah.Xd == a) var d = ah.re;
     else ((d = Error().stack.toString().split('\n')), 'Error' == d[0] && d.shift(), dh(d));
-    for (var e = 3; d[e] && ch(d[e]) != a; ) ++e;
+    for (var e = 3; d[e] && ch(d[e]) != a;) ++e;
     for (a = 0; a < c && d[a + e]; ++a) (u(), B)[((b + 4 * a) >>> 2) >>> 0] = ch(d[a + e]);
     return a;
   }
@@ -3192,7 +3192,7 @@ async function ortWasmThreaded(moduleArg = {}) {
     if (0 < Gf) Hf = Ea;
     else if (n) (xa?.(g), Sa());
     else {
-      for (var a = Ff; 0 < a.length; ) a.shift()(g);
+      for (var a = Ff; 0 < a.length;) a.shift()(g);
       0 < Gf ? (Hf = Ea) : ((g.calledRun = !0), ua || (Sa(), xa?.(g)));
     }
   }
