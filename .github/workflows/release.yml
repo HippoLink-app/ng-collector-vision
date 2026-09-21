@@ -22,6 +22,10 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
 
+      # Trusted publishing needs npm >= 11.5.1.
+      - name: Update npm
+        run: npm install -g npm@^11.5.1
+
       - run: npm ci
 
       # ── Verify ──────────────────────────────────────────────────────────────
@@ -53,10 +57,11 @@ jobs:
 
       # ── Publish ──────────────────────────────────────────────────────────────
 
+      # Trusted publishing: npm exchanges the workflow's OIDC identity for a
+      # short-lived publish credential, so no NPM_TOKEN secret is involved. The
+      # publisher (this repo + release.yml) is configured on npmjs.com.
       - name: Publish to npm
         run: npm publish ./dist/ng-collector-vision --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # ── GitHub release ───────────────────────────────────────────────────────
 
