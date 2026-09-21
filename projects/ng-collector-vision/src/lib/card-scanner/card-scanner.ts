@@ -17,6 +17,7 @@ import {
 import { ConfirmationBucket } from '../confirmation-bucket';
 import {
   CONSECUTIVE_MATCHES,
+  CATALOG_GAME_ALIASES,
   COOLDOWN_MS,
   CORNER_OVERLAY_COLOUR,
   MAX_IMAGE_LONG_EDGE_PX,
@@ -29,6 +30,7 @@ import { CV_ASSET_BASE_PATH, CV_WASM_BASE_PATH } from '../tokens';
 import type {
   CardDetection,
   CardScannerGame,
+  CardScannerSource,
   ConfirmedResult,
   ImageScanOutcome,
   ScannerStatus,
@@ -68,6 +70,12 @@ export class CardScannerComponent {
 
   readonly game = input.required<CardScannerGame>();
 
+  /**
+   * Catalog source. Default `tcgplayer` (cardId = TCGplayer product id). `scryfall` is Magic
+   * only. Read when the scanner starts; changing it takes effect on the next restart.
+   */
+  readonly source = input<CardScannerSource>('tcgplayer');
+
   /** Minimum corner-detector confidence to consider a card present [0–1]. Default 0.02. */
   readonly minCornerConfidence = input<number>(MIN_CORNER_CONFIDENCE);
 
@@ -83,7 +91,7 @@ export class CardScannerComponent {
   /** Cooldown in ms before the same card can be detected again. Default 3500. */
   readonly cooldownMs = input<number>(COOLDOWN_MS);
 
-  /** Group alternate printings of the same card by secondary ID (oracle ID). Default true. */
+  /** Group alternate printings by secondary ID (oracle ID; Scryfall source only). Default true. */
   readonly groupBySecondaryId = input<boolean>(true);
 
   /** Interval between frame captures in ms. Default 900. */
@@ -303,9 +311,9 @@ export class CardScannerComponent {
     this.#spawnWorker(manifest);
   }
 
-  /** Fetch the CollectorVision manifest for the current `game`. */
+  /** Fetch the CollectorVision model manifest (shared by every game). */
   async #fetchManifest(signal?: AbortSignal): Promise<unknown> {
-    const manifestUrl = `${this.#assetBase}/assets/${this.game()}/manifest.json`;
+    const manifestUrl = `${this.#assetBase}/assets/manifest.json`;
     const res = await fetch(manifestUrl, { signal });
     if (!res.ok) throw new Error(`Manifest fetch failed: HTTP ${res.status}`);
     return res.json();
@@ -324,6 +332,8 @@ export class CardScannerComponent {
       this.#worker.postMessage({
         type: 'init',
         manifest,
+        game: CATALOG_GAME_ALIASES[this.game()] ?? this.game(),
+        source: this.source(),
         assetBase: this.#assetBase,
         wasmBase: this.#wasmBase,
         enableWebGpu: false,
@@ -598,6 +608,7 @@ export class CardScannerComponent {
     const needsReview = confirmed.score < this.reviewThreshold();
     const detection: CardDetection = {
       cardId: confirmed.cardId,
+      cardName: confirmed.cardName ?? null,
       secondaryId: confirmed.secondaryId ?? null,
       secondaryIdField: confirmed.secondaryIdField ?? null,
       score: confirmed.score,
@@ -609,7 +620,7 @@ export class CardScannerComponent {
       detectedAt: new Date().toISOString(),
     };
     const label = needsReview ? 'low confidence — please verify' : 'detected';
-    this.a11yAnnouncement.set(`Card ${label}: ${confirmed.cardId}`);
+    this.a11yAnnouncement.set(`Card ${label}: ${confirmed.cardName ?? confirmed.cardId}`);
     this.#flash(!needsReview);
     this.cardDetected.emit(detection);
     return detection;

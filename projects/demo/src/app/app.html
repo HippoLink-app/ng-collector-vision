@@ -127,6 +127,7 @@
       >
         <cv-card-scanner
           [game]="selectedGame()"
+          [source]="source()"
           [minCornerConfidence]="cornerThreshold()"
           [minAcceptanceScore]="idThreshold()"
           [consecutiveMatches]="consecutiveScans()"

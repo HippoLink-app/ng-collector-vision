@@ -11,7 +11,7 @@ import {
   SCAN_INTERVAL_MS,
 } from './constants';
 import { CV_ASSET_BASE_PATH } from './tokens';
-import type { WorkerResultMsg } from './types';
+import type { CardScannerGame, WorkerResultMsg } from './types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -272,7 +272,7 @@ describe('CardScannerComponent', () => {
     }).compileComponents();
   });
 
-  function createScanner(game: 'magic' | 'pokemon' | 'lorcana' | 'onepiece' = 'magic') {
+  function createScanner(game: CardScannerGame = 'magic') {
     const fixture = TestBed.createComponent(CardScannerComponent);
     fixture.componentRef.setInput('game', game);
     // Do NOT call fixture.detectChanges() — afterNextRender would try to open
@@ -358,10 +358,14 @@ describe('CardScannerComponent', () => {
 
   describe('game input', () => {
     it('accepts all supported game values', () => {
-      for (const game of ['magic', 'pokemon', 'lorcana', 'onepiece'] as const) {
-        const comp = createScanner(game);
-        expect(comp.game()).toBe(game);
+      for (const { value } of GAME_OPTIONS) {
+        const comp = createScanner(value);
+        expect(comp.game()).toBe(value);
       }
+    });
+
+    it('defaults source to tcgplayer', () => {
+      expect(createScanner().source()).toBe('tcgplayer');
     });
 
     it('reflects a custom input value', () => {
@@ -408,7 +412,7 @@ describe('CardScannerComponent', () => {
       vi.unstubAllGlobals();
     });
 
-    function createImageScanner(game: 'magic' | 'pokemon' | 'lorcana' | 'onepiece' = 'magic') {
+    function createImageScanner(game: CardScannerGame = 'magic') {
       activeFixture = TestBed.createComponent(CardScannerComponent);
       activeFixture.componentRef.setInput('game', game);
       return activeFixture.componentInstance;
@@ -441,6 +445,8 @@ describe('CardScannerComponent', () => {
         catalogRows: 0,
         catalogTotalRows: 0,
         catalogLimit: null,
+        catalogVersion: 1,
+        catalogKey: 'milo1/tcgplayer/mtg',
       });
       await flush(); // createImageBitmap + #downscaleIfNeeded + postMessage
       expect(worker.posted.some((m) => (m as { type?: string }).type === 'frame')).toBe(true);
@@ -494,6 +500,33 @@ describe('CardScannerComponent', () => {
       expect(emitted).toHaveLength(1);
     });
 
+    it.each([
+      ['magic', 'mtg'],
+      ['onepiece', 'onepiece'],
+      ['union-arena', 'union-arena'],
+    ] as const)(
+      'inits the worker with the shared manifest, catalog game "%s" -> "%s" and the source',
+      async (game, catalogGame) => {
+        const comp = createImageScanner(game);
+        activeFixture!.componentRef.setInput('source', 'scryfall');
+        comp.pauseCamera();
+        void comp
+          .scanImage(new File(['x'], 'card.jpg', { type: 'image/jpeg' }))
+          .catch(() => undefined);
+        await flush();
+
+        expect(fetch).toHaveBeenCalledWith(
+          'collectorvision/assets/manifest.json',
+          expect.anything(),
+        );
+        expect(FakeWorker.instances[0].posted[0]).toMatchObject({
+          type: 'init',
+          game: catalogGame,
+          source: 'scryfall',
+        });
+      },
+    );
+
     it('rejects when called while the live camera stream is active', async () => {
       const fakeTrack = { stop: () => {} };
       const fakeStream = { getTracks: () => [fakeTrack] } as unknown as MediaStream;
@@ -541,14 +574,13 @@ describe('CardScannerComponent', () => {
 // ── Constants ──────────────────────────────────────────────────────────────
 
 describe('constants', () => {
-  it('GAME_OPTIONS covers all four supported games', () => {
+  it('GAME_OPTIONS covers every game in the Catalog v2 feed', () => {
     const values = GAME_OPTIONS.map((o) => o.value);
-    expect(values).toContain('magic');
-    expect(values).toContain('pokemon');
-    expect(values).toContain('lorcana');
-    expect(values).toContain('onepiece');
-    expect(values).not.toContain('riftbound');
-    expect(GAME_OPTIONS).toHaveLength(4);
+    for (const game of ['magic', 'pokemon', 'lorcana', 'onepiece', 'riftbound', 'yugioh']) {
+      expect(values).toContain(game);
+    }
+    expect(new Set(values).size).toBe(values.length);
+    expect(GAME_OPTIONS).toHaveLength(12);
   });
 
   it('REVIEW_THRESHOLD is between 0 and 1', () => {

@@ -1,0 +1,33 @@
+{
+  "version": "2026-09-20",
+  "models": {
+    "detector": "https://huggingface.co/HanClinto/cornelius/resolve/9280009f5a66f75f952820d9dadb894909b759b7/cornelius-2.12.onnx",
+    "milo": "https://huggingface.co/HanClinto/milo/resolve/9bcc5e809e936b8c5630d1e7101aae1de1e76621/model.onnx"
+  },
+  "model_ids": {
+    "detector": "cornelius-2.12",
+    "milo": "milo-1.0.0"
+  },
+  "model_hashes": {
+    "detector": "650da3cc3e9ac778c6951de631f824ec1e63bdabf3aaa39a35d7435af625612e",
+    "milo": "bd13d8d60383c69da04dce261f32e93fdaeaa8fd618fbc991e7385f71b3d45df"
+  },
+  "model_sizes": {
+    "detector": 4407545,
+    "milo": 5191100
+  },
+  "detector": {
+    "family": "cornelius",
+    "architecture": "mobilevit-xxs-global-token-simcc",
+    "input_size": 384,
+    "preprocess": "imagenet-rgb",
+    "outputs": {
+      "corners": "corners",
+      "presence": "presence",
+      "sharpness": "sharpness"
+    }
+  },
+  "catalog": {
+    "dims": 128
+  }
+}

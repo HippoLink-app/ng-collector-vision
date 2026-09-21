@@ -2,7 +2,7 @@
 
 > Angular 22 component library for real-time, on-device TCG card scanning — powered by [CollectorVision](https://github.com/HanClinto/CollectorVision).
 
-Point a camera at a Magic: The Gathering, Pokémon, Lorcana, or One Piece card. Get back a card identity in under a second. **No server. No API key. No cloud.**
+Point a camera at a Magic: The Gathering, Pokémon, Yu-Gi-Oh!, Lorcana, One Piece, or other supported card. Get back a card identity in under a second. **No server. No API key. No cloud.**
 
 ```html
 <cv-card-scanner game="magic" (cardDetected)="onCard($event)" />
@@ -26,7 +26,7 @@ CollectorVision solves a hard computer vision problem: given a hand-held photo o
 | **Cornelius** | Corner detector | 384 × 384 video frame   | 4 corner points + presence confidence |
 | **Milo**      | Card embedder   | 448 × 448 dewarped crop | 128-dimensional fingerprint           |
 
-The fingerprint is matched against a catalog of ~108 k reference embeddings (cosine similarity, <10 ms on device). Catalogs are published as versioned `.npz` snapshots on [HuggingFace (HanClinto/milo)](https://huggingface.co/HanClinto/milo/tree/main/catalogs) and cached in IndexedDB after the first download.
+The fingerprint is matched against a catalog of up to ~115 k reference embeddings (cosine similarity, <10 ms on device). Catalogs come from the [Catalog v2 feed](https://hanclinto.github.io/CollectorVisionCatalog/catalog-v2/catalog-feed-v2.json) (FP16 base snapshot + incremental updates) and are cached in IndexedDB after the first download.
 
 **The full pipeline runs end-to-end in the browser, in a Web Worker, with no data ever leaving the device.**
 
@@ -63,12 +63,12 @@ The package ships the CollectorVision Web Worker, ONNX WASM runtime, and a Cross
 "assets": [
   {
     "glob": "**/*",
-    "input": "node_modules/ng-collector-vision/collectorvision",
+    "input": "node_modules/@hippolink/ng-collector-vision/collectorvision",
     "output": "/collectorvision"
   },
   {
     "glob": "coi-serviceworker.js",
-    "input": "node_modules/ng-collector-vision/collectorvision",
+    "input": "node_modules/@hippolink/ng-collector-vision/collectorvision",
     "output": "/"
   }
 ]
@@ -98,41 +98,49 @@ On the first page load the service worker installs, claims the page, and trigger
 
 > **Note:** Use a relative path (`coi-serviceworker.js`, no leading `/`) so the registration works both at the root domain and under a subdirectory (e.g. GitHub Pages).
 
-### 3 — Add game manifests
+### 3 — Add the model manifest
 
-For each game you want to scan, create a JSON manifest at:
+The ONNX models are shared by every game, so one manifest covers them all:
 
 ```
-public/collectorvision/assets/<game>/manifest.json
+public/collectorvision/assets/manifest.json
 ```
-
-The manifest tells the worker where to find the ONNX models and which HuggingFace catalog to load:
 
 ```json
 {
-  "version": "2026-05-07",
+  "version": "2026-09-20",
   "models": {
-    "cornelius": "https://hanclinto.github.io/CollectorVision/assets/models/cornelius.onnx",
-    "milo": "https://hanclinto.github.io/CollectorVision/assets/models/milo.onnx"
+    "detector": "https://huggingface.co/HanClinto/cornelius/resolve/9280009f5a66f75f952820d9dadb894909b759b7/cornelius-2.12.onnx",
+    "milo": "https://huggingface.co/HanClinto/milo/resolve/9bcc5e809e936b8c5630d1e7101aae1de1e76621/model.onnx"
   },
-  "catalog": {
-    "huggingface_key": "tcgplayer-mtg",
-    "dims": 128,
-    "rows": 0
-  }
+  "model_hashes": {
+    "detector": "650da3cc3e9ac778c6951de631f824ec1e63bdabf3aaa39a35d7435af625612e",
+    "milo": "bd13d8d60383c69da04dce261f32e93fdaeaa8fd618fbc991e7385f71b3d45df"
+  },
+  "model_sizes": { "detector": 4407545, "milo": 5191100 },
+  "detector": {
+    "family": "cornelius",
+    "input_size": 384,
+    "preprocess": "imagenet-rgb",
+    "outputs": { "corners": "corners", "presence": "presence", "sharpness": "sharpness" }
+  },
+  "catalog": { "dims": 128 }
 }
 ```
 
-**Available catalogs** (from [HanClinto/milo on HuggingFace](https://huggingface.co/HanClinto/milo/tree/main/catalogs)):
+`model_hashes` are used as the IndexedDB cache key, so a new model file always busts the cache. Pin the model URLs to a Hugging Face revision as above (the [CollectorVision model registry](https://huggingface.co/HanClinto/CollectorVision/blob/main/registry.json) lists the current ones) — `resolve/main/…` can change under you.
 
-| Game                 | `huggingface_key`    | Card ID format        |
-| -------------------- | -------------------- | --------------------- |
-| Magic: The Gathering | `tcgplayer-mtg`      | TCGplayer integer IDs |
-| Pokémon TCG          | `tcgplayer-pokemon`  | TCGplayer integer IDs |
-| Disney Lorcana       | `tcgplayer-lorcana`  | TCGplayer integer IDs |
-| One Piece Card Game  | `tcgplayer-onepiece` | TCGplayer integer IDs |
+**Catalogs are not configured here.** The worker loads them by `game` (and `source`) from the [Catalog v2 feed](https://hanclinto.github.io/CollectorVisionCatalog/catalog-v2/catalog-feed-v2.json) — a FP16 base snapshot plus incremental updates, cached in IndexedDB. Supported `game` values:
 
-Models (~10 MB combined) and catalogs (~1–53 MB depending on game) download once and are cached in IndexedDB. Subsequent launches are instant, even offline.
+| `game`                                                                        | Source(s)               | Card ID                      |
+| ----------------------------------------------------------------------------- | ----------------------- | ---------------------------- |
+| `magic`                                                                       | `tcgplayer`, `scryfall` | TCGplayer id / Scryfall UUID |
+| `pokemon`, `pokemon-japan`, `yugioh`, `lorcana`, `onepiece`, `fab`, `digimon` | `tcgplayer`             | TCGplayer id                 |
+| `swu`, `union-arena`, `gundam`, `riftbound`                                   | `tcgplayer`             | TCGplayer id                 |
+
+Set the `source` input to `scryfall` (Magic only) to get Scryfall UUIDs and an oracle ID for grouping printings. The default is `tcgplayer`.
+
+Models (~10 MB) and the catalog (~1–30 MB depending on game) download once and are cached in IndexedDB. Subsequent launches are instant, even offline.
 
 ### 4 — Provide HTTP client
 
@@ -169,8 +177,8 @@ export class MyScannerComponent {
   isOpen = true;
 
   onCard(detection: CardDetection): void {
-    // detection.cardId is a TCGplayer integer ID (for tcgplayer-* catalogs)
-    // or a Scryfall UUID (for scryfall-* catalogs)
+    // detection.cardId is a TCGplayer product ID (source 'tcgplayer', the default)
+    // or a Scryfall UUID (source 'scryfall', Magic only)
     console.log(detection.cardId, detection.score.toFixed(3));
   }
 }
@@ -188,23 +196,38 @@ export class MyScannerComponent {
 
 ### Inputs
 
-| Input                 | Type              | Default      | Description                                                                                                                                  |
-| --------------------- | ----------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `game`                | `CardScannerGame` | **required** | Active game. Changing this value restarts the scanner.                                                                                       |
-| `minCornerConfidence` | `number`          | `0.02`       | Cornelius gate threshold `[0–1]`. Raise to reduce false positives in cluttered scenes. Updated live — no restart required.                   |
-| `minAcceptanceScore`  | `number`          | `0.5`        | Minimum Milo cosine similarity before a frame is passed to the confirmation bucket `[0–1]`. Updated live.                                    |
-| `consecutiveMatches`  | `number`          | `2`          | Number of consecutive matching frames required before `cardDetected` fires. Higher = more certain, slower. Updated live.                     |
-| `cooldownMs`          | `number`          | `3500`       | Cooldown (ms) before the same card can fire `cardDetected` again. Updated live.                                                              |
-| `groupBySecondaryId`  | `boolean`         | `true`       | When `true`, alternate printings of the same card (same oracle/secondary ID) are grouped together for the confirmation streak. Updated live. |
-| `scanIntervalMs`      | `number`          | `900`        | Interval between frame captures (ms). Minimum `100` recommended. Updated live.                                                               |
-| `playSounds`          | `boolean`         | `true`       | Enable synthesized audio feedback.                                                                                                           |
-| `confidentSoundUrl`   | `string \| null`  | `null`       | WAV (or any Web Audio–decodable format) for a confident detection. `null` → synthesized two-note chime.                                      |
-| `uncertainSoundUrl`   | `string \| null`  | `null`       | Sound for a low-confidence detection. `null` → synthesized blip.                                                                             |
+| Input                 | Type                | Default       | Description                                                                                                                                  |
+| --------------------- | ------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `game`                | `CardScannerGame`   | **required**  | Active game. Changing this value restarts the scanner.                                                                                       |
+| `minCornerConfidence` | `number`            | `0.02`        | Cornelius gate threshold `[0–1]`. Raise to reduce false positives in cluttered scenes. Updated live — no restart required.                   |
+| `minAcceptanceScore`  | `number`            | `0.5`         | Minimum Milo cosine similarity before a frame is passed to the confirmation bucket `[0–1]`. Updated live.                                    |
+| `consecutiveMatches`  | `number`            | `2`           | Number of consecutive matching frames required before `cardDetected` fires. Higher = more certain, slower. Updated live.                     |
+| `cooldownMs`          | `number`            | `3500`        | Cooldown (ms) before the same card can fire `cardDetected` again. Updated live.                                                              |
+| `source`              | `CardScannerSource` | `'tcgplayer'` | Catalog source (`'scryfall'` is Magic only). Read when the scanner starts.                                                                   |
+| `groupBySecondaryId`  | `boolean`           | `true`        | When `true`, alternate printings of the same card (same oracle/secondary ID) are grouped together for the confirmation streak. Updated live. |
+| `scanIntervalMs`      | `number`            | `900`         | Interval between frame captures (ms). Minimum `100` recommended. Updated live.                                                               |
+| `playSounds`          | `boolean`           | `true`        | Enable synthesized audio feedback.                                                                                                           |
+| `confidentSoundUrl`   | `string \| null`    | `null`        | WAV (or any Web Audio–decodable format) for a confident detection. `null` → synthesized two-note chime.                                      |
+| `uncertainSoundUrl`   | `string \| null`    | `null`        | Sound for a low-confidence detection. `null` → synthesized blip.                                                                             |
 
 `CardScannerGame`:
 
 ```ts
-type CardScannerGame = 'magic' | 'pokemon' | 'lorcana' | 'onepiece';
+type CardScannerGame =
+  | 'magic'
+  | 'pokemon'
+  | 'pokemon-japan'
+  | 'yugioh'
+  | 'lorcana'
+  | 'onepiece'
+  | 'fab'
+  | 'digimon'
+  | 'swu'
+  | 'union-arena'
+  | 'gundam'
+  | 'riftbound';
+
+type CardScannerSource = 'tcgplayer' | 'scryfall';
 ```
 
 ### Outputs
@@ -247,15 +270,18 @@ type ScannerStatus =
 
 ```ts
 interface CardDetection {
-  /** Raw card identifier from the CollectorVision catalog.
-   *  TCGplayer catalogs → integer string  e.g. "507371"
-   *  Scryfall catalogs  → UUID            e.g. "abc123-..." */
+  /** Raw card identifier from the catalog.
+   *  source 'tcgplayer' → integer string  e.g. "507371"
+   *  source 'scryfall'  → UUID            e.g. "abc123-..." */
   cardId: string;
 
-  /** Oracle ID or other secondary identifier, if the catalog includes one. */
+  /** Card name from the catalog record, if present. */
+  cardName: string | null;
+
+  /** Oracle ID (Scryfall source only). */
   secondaryId: string | null;
 
-  /** Name of the secondaryId field, e.g. "oracleId". */
+  /** Name of the secondaryId field, e.g. "scryfallOracleId". */
   secondaryIdField: string | null;
 
   /** Cosine similarity score [0, 1]. Values ≥ 0.8 are high-confidence. */
@@ -352,7 +378,7 @@ onCard(detection: CardDetection): void {
 
 ### Enriching with Scryfall (Magic)
 
-For Magic cards scanned with the `tcgplayer-mtg` catalog, `cardId` is a TCGplayer integer ID. Scryfall can resolve it:
+For Magic cards scanned with the `tcgplayer` source, `cardId` is a TCGplayer integer ID. Scryfall can resolve it:
 
 ```ts
 fetch(`https://api.scryfall.com/cards/tcgplayer/${detection.cardId}`)
@@ -360,7 +386,7 @@ fetch(`https://api.scryfall.com/cards/tcgplayer/${detection.cardId}`)
   .then((card) => console.log(card.name, card.image_uris?.small));
 ```
 
-For the `scryfall-mtg` catalog, `cardId` is directly a Scryfall UUID:
+For the `scryfall` source (`[source]="'scryfall'"`), `cardId` is directly a Scryfall UUID:
 
 ```ts
 fetch(`https://api.scryfall.com/cards/${detection.cardId}`)
@@ -397,7 +423,7 @@ Where `scanner` is a `viewChild(CardScannerComponent)` reference.
 
 ### Asset base path
 
-`CV_ASSET_BASE_PATH` controls where game manifests and sound files are fetched from. Override to serve these from your own platform or CDN:
+`CV_ASSET_BASE_PATH` controls where the model manifest and sound files are fetched from. Override to serve these from your own platform or CDN:
 
 ```ts
 import { CV_ASSET_BASE_PATH } from '@hippolink/ng-collector-vision';
@@ -491,7 +517,7 @@ All tuning parameters update live without restarting the worker or camera:
 └─────────────────────────────────────────────────────┘
 ```
 
-**First-launch latency:** models download once (~10 MB) and catalog downloads once (1–53 MB depending on game), both cached in IndexedDB. Cold start is the only slow path.
+**First-launch latency:** models download once (~10 MB) and catalog downloads once (1–30 MB depending on game), both cached in IndexedDB. Cold start is the only slow path.
 
 **Steady-state latency:** <100 ms per inference on a mid-range laptop CPU (WASM SIMD, multi-threaded).
 
@@ -510,6 +536,16 @@ Requires:
 Tested on: Chrome 120+, Firefox 121+, Safari 17+, Android Chrome.
 
 ---
+
+## Upgrading from 0.1.x
+
+0.2.0 moves to CollectorVision **Catalog v2** (the models are unchanged):
+
+- Replace the per-game `assets/<game>/manifest.json` files with a single `assets/manifest.json` (see setup step 3). Catalogs are no longer named in the manifest.
+- Copy `collectorvision/lib/` next to `scanner.worker.mjs` (the worker imports the Catalog v2 client from it). The default `**/*` glob does this; a hand-picked asset list must include `lib/**`.
+- Allow `https://hanclinto.github.io` in your CSP `connect-src` (the catalog feed) alongside Hugging Face.
+- `CardDetection` gains `cardName`. `cardId` is unchanged for the default `tcgplayer` source; use `[source]="'scryfall'"` for Magic Scryfall UUIDs. Oracle-id grouping only applies to the Scryfall source.
+- `CardScannerGame` gains `pokemon-japan`, `yugioh`, `fab`, `digimon`, `swu`, `union-arena`, `gundam`, `riftbound`.
 
 ## License
 
