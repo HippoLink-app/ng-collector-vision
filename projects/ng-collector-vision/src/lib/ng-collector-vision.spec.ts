@@ -446,6 +446,7 @@ describe('CardScannerComponent', () => {
         catalogTotalRows: 0,
         catalogLimit: null,
         catalogVersion: 1,
+        catalogSourceUpdatedAt: '2026-10-05T09:05:54.625Z',
         catalogKey: 'milo1/tcgplayer/mtg',
       });
       await flush(); // createImageBitmap + #downscaleIfNeeded + postMessage
@@ -453,6 +454,20 @@ describe('CardScannerComponent', () => {
       worker.emit({ type: 'result', ...result });
       return outcomePromise;
     }
+
+    it('publishes the loaded catalog on ready', async () => {
+      const comp = createImageScanner();
+      expect(comp.catalogInfo()).toBeNull();
+      const file = new File(['x'], 'blank.jpg', { type: 'image/jpeg' });
+
+      await driveScan(comp, file, { cardPresent: false, cornersValid: false, confidence: 0.1 });
+
+      expect(comp.catalogInfo()).toEqual({
+        key: 'milo1/tcgplayer/mtg',
+        version: 1,
+        sourceUpdatedAt: '2026-10-05T09:05:54.625Z',
+      });
+    });
 
     it('resolves { ok: false, reason: "no-card" } when the worker finds no card, bypassing the multi-frame streak', async () => {
       const comp = createImageScanner();

@@ -218,6 +218,20 @@ type ScannerStatus =
   | 'error'; // unrecoverable — call openScanner() to retry
 ```
 
+### `CatalogInfo`
+
+The `catalogInfo` signal reports the embedding catalog the worker loaded. It is `null` until the worker is ready, and resets whenever the worker respawns (e.g. on a game change):
+
+```ts
+interface CatalogInfo {
+  key: string | null; // e.g. 'milo1/tcgplayer/mtg'
+  version: number | null; // Catalog v2 version, bumped by each nightly publish
+  sourceUpdatedAt: string | null; // ISO timestamp of the source data behind that version
+}
+```
+
+If the upstream nightly stops publishing, `sourceUpdatedAt` stops advancing, so it is the field to show when you want staleness to be visible.
+
 ### Asset base path
 
 `CV_ASSET_BASE_PATH` controls where the model manifest and sound files are fetched from. Override it to serve these from your own platform or CDN:

@@ -40,7 +40,19 @@ export interface WorkerReadyMsg {
   catalogTotalRows: number;
   catalogLimit: number | null;
   catalogVersion: number | null;
+  /** ISO timestamp of the catalog source data, e.g. `2026-10-05T09:05:54.625Z`. */
+  catalogSourceUpdatedAt: string | null;
   catalogKey: string | null;
+}
+
+/** The embedding catalog the worker loaded, reported once it is ready. */
+export interface CatalogInfo {
+  /** Catalog v2 key, e.g. `milo1/tcgplayer/mtg`. */
+  key: string | null;
+  /** Catalog v2 version number; increments on every published nightly update. */
+  version: number | null;
+  /** ISO timestamp of the catalog source data the loaded version was built from. */
+  sourceUpdatedAt: string | null;
 }
 
 export interface WorkerResultMsg {
