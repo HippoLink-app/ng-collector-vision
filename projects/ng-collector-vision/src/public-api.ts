@@ -10,6 +10,7 @@ export type {
   CardScannerGame,
   CardScannerSource,
   CardDetection,
+  CatalogInfo,
   ScannerStatus,
   WorkerMsg,
   WorkerProgressMsg,

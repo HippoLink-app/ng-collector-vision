@@ -31,6 +31,7 @@ import type {
   CardDetection,
   CardScannerGame,
   CardScannerSource,
+  CatalogInfo,
   ConfirmedResult,
   ImageScanOutcome,
   ScannerStatus,
@@ -123,6 +124,8 @@ export class CardScannerComponent {
   readonly status = signal<ScannerStatus>('idle');
   readonly downloadProgress = signal<number>(0);
   readonly errorMessage = signal<string>('');
+  /** The catalog the worker loaded. `null` until the worker reports ready, and again on respawn. */
+  readonly catalogInfo = signal<CatalogInfo | null>(null);
   readonly a11yAnnouncement = signal<string>('');
   readonly viewfinderFlash = signal<'confident' | 'uncertain' | null>(null);
   /** Latest corner-detector confidence value from the worker (updated every frame). */
@@ -321,6 +324,7 @@ export class CardScannerComponent {
 
   /** Spawn (or respawn) the scanner worker and post `init`. Does not await `ready`. */
   #spawnWorker(manifest: unknown): void {
+    this.catalogInfo.set(null);
     try {
       this.#worker = new Worker(`collectorvision/${WORKER_FILENAME}`, { type: 'module' });
       this.#worker.addEventListener('message', (e: MessageEvent<WorkerMsg>) =>
@@ -527,6 +531,11 @@ export class CardScannerComponent {
         break;
       case 'ready':
         this.#workerReady = true;
+        this.catalogInfo.set({
+          key: msg.catalogKey,
+          version: msg.catalogVersion,
+          sourceUpdatedAt: msg.catalogSourceUpdatedAt ?? null,
+        });
         this.status.set('scanning');
         if (this.#stream) {
           this.#startScanLoop();

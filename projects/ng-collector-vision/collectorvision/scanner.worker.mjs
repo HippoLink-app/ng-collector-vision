@@ -544,6 +544,7 @@ class WorkerRuntime {
     this.rotationInvariant = rotationInvariant;
     this.minCornerConfidence = clamp01(minCornerConfidence);
     this.catalogVersion = null;
+    this.catalogSourceUpdatedAt = null;
     this.catalogKey = null;
     this.catalogLimit =
       Number.isFinite(catalogLimit) && catalogLimit > 0 ? Math.floor(catalogLimit) : null;
@@ -673,6 +674,7 @@ class WorkerRuntime {
     this.catalogRows = requestedRows;
     this.catalogTotalRows = catalog.rows;
     this.catalogVersion = catalog.version;
+    this.catalogSourceUpdatedAt = catalog.sourceUpdatedAt;
     this.catalogKey = catalog.catalogKey;
     this.catalogDims = catalog.dimension;
     onStage?.('catalog', 1, 0, 0, false);
@@ -1104,6 +1106,8 @@ self.onmessage = async ({ data }) => {
         catalogTotalRows: runtime.catalogTotalRows,
         catalogLimit: runtime.catalogLimit,
         catalogVersion: runtime.catalogVersion,
+        // HippoLink addition (not upstream): lets the host show how fresh the catalog is.
+        catalogSourceUpdatedAt: runtime.catalogSourceUpdatedAt,
         catalogKey: runtime.catalogKey,
       });
     } else if (data.type === 'frame') {
